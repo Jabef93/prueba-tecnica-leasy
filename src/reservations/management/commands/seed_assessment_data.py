@@ -74,8 +74,8 @@ class Command(BaseCommand):
         Reservation.objects.get_or_create(
             customer=alice,
             room=room_a,
-            starts_at=now + timedelta(days=2),
             defaults={
+                "starts_at": now + timedelta(days=2),
                 "ends_at": now + timedelta(days=2, hours=2),
                 "status": "requested",
                 "internal_note": "VIP customer. Handle gently.",
@@ -84,8 +84,8 @@ class Command(BaseCommand):
         Reservation.objects.get_or_create(
             customer=alice,
             room=room_b,
-            starts_at=now + timedelta(days=4),
             defaults={
+                "starts_at": now + timedelta(days=4),
                 "ends_at": now + timedelta(days=4, hours=1),
                 "status": "confirmed",
                 "internal_note": "Already confirmed by manager.",
@@ -94,8 +94,8 @@ class Command(BaseCommand):
         Reservation.objects.get_or_create(
             customer=bob,
             room=room_a,
-            starts_at=now + timedelta(days=3),
             defaults={
+                "starts_at": now + timedelta(days=3),
                 "ends_at": now + timedelta(days=3, hours=3),
                 "status": "requested",
                 "internal_note": "May need projectors.",

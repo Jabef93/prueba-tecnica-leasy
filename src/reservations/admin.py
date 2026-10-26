@@ -20,3 +20,4 @@ class ReservationAdmin(admin.ModelAdmin):
     list_display = ("customer", "room", "status", "starts_at", "ends_at")
     list_filter = ("status", "room")
     search_fields = ("customer__display_name", "customer__user__email", "room__name")
+    readonly_fields = ("hold_reason", "cancel_reason", "created_at", "updated_at")

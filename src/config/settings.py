@@ -1,10 +1,33 @@
+from __future__ import annotations
+
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-assessment-secret-key"
-DEBUG = True
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "0.0.0.0"]
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_list(name: str, default: list[str]) -> list[str]:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY", "django-insecure-assessment-secret-key"
+)
+DEBUG = _env_bool("DJANGO_DEBUG", True)
+ALLOWED_HOSTS = _env_list(
+    "DJANGO_ALLOWED_HOSTS", ["127.0.0.1", "localhost", "0.0.0.0"]
+)
+CSRF_TRUSTED_ORIGINS = _env_list("DJANGO_CSRF_TRUSTED_ORIGINS", [])
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -19,6 +42,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -46,12 +70,27 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "").strip()
+if POSTGRES_HOST:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("POSTGRES_DB", "assessment"),
+            "USER": os.environ.get("POSTGRES_USER", "assessment"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "assessment"),
+            "HOST": POSTGRES_HOST,
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+            "CONN_MAX_AGE": int(os.environ.get("POSTGRES_CONN_MAX_AGE", "60")),
+            "CONN_HEALTH_CHECKS": True,
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": Path(os.environ.get("DJANGO_DB_PATH", BASE_DIR / "db.sqlite3")),
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -75,6 +114,7 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -82,6 +122,6 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "reservation_list"
 LOGOUT_REDIRECT_URL = "login"
 
-API_JWT_SECRET = SECRET_KEY
-API_JWT_ISSUER = "assessment-client-api"
-API_JWT_AUDIENCE = "assessment-client-app"
+API_JWT_SECRET = os.environ.get("API_JWT_SECRET", SECRET_KEY)
+API_JWT_ISSUER = os.environ.get("API_JWT_ISSUER", "assessment-client-api")
+API_JWT_AUDIENCE = os.environ.get("API_JWT_AUDIENCE", "assessment-client-app")

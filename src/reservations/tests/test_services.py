@@ -135,3 +135,19 @@ def test_hold_reservation_raises_not_found_for_unknown_id(hold_actor):
             reason="Any reason",
             actor=hold_actor,
         )
+
+
+@pytest.mark.django_db
+def test_seed_assessment_data_is_idempotent():
+    from django.core.management import call_command
+
+    from reservations.models import Reservation
+
+    call_command("seed_assessment_data")
+    first_count = Reservation.objects.count()
+
+    call_command("seed_assessment_data")
+    second_count = Reservation.objects.count()
+
+    assert first_count == 3
+    assert second_count == first_count
