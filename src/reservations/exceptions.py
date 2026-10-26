@@ -14,3 +14,13 @@ class ReservationNotFoundError(ReservationError):
 class ReservationStatusTransitionError(ReservationError):
     code = "reservation_invalid_transition"
     detail = "Reservation cannot transition from its current status."
+
+
+class ReservationReasonRequiredError(ReservationError):
+    code = "reservation_reason_required"
+    detail = "A reason is required for this action."
+
+
+class ReservationReasonTooLongError(ReservationError):
+    code = "reservation_reason_too_long"
+    detail = "The reason is too long."
