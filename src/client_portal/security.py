@@ -31,7 +31,7 @@ class ClientTokenService:
     @staticmethod
     def decode_access_token(token: str) -> dict:
         try:
-            return jwt.decode(
+            payload = jwt.decode(
                 token,
                 settings.API_JWT_SECRET,
                 algorithms=["HS256"],
@@ -40,6 +40,11 @@ class ClientTokenService:
             )
         except jwt.PyJWTError as exc:
             raise InvalidTokenError() from exc
+
+        if payload.get("type") != "access":
+            raise InvalidTokenError()
+
+        return payload
 
 
 class ClientJWTAuth(HttpBearer):
@@ -50,7 +55,7 @@ class ClientJWTAuth(HttpBearer):
         except User.DoesNotExist as exc:
             raise InvalidTokenError() from exc
 
-        if not hasattr(user, "customer_profile"):
+        if not user.is_active or not hasattr(user, "customer_profile"):
             raise InvalidTokenError()
 
         return user.customer_profile

@@ -69,6 +69,42 @@ Response `200`:
 ]
 ```
 
+### `POST /reservations/{reservation_id}/cancel`
+
+Header:
+
+```text
+Authorization: Bearer <token>
+```
+
+Request:
+
+```json
+{
+  "reason": "Change of schedule"
+}
+```
+
+Response `200`:
+
+```json
+{
+  "id": "uuid",
+  "room_name": "Room A",
+  "status": "cancelled",
+  "starts_at": "2026-04-20T15:00:00-05:00",
+  "ends_at": "2026-04-20T17:00:00-05:00",
+  "cancel_reason": "Change of schedule"
+}
+```
+
+Error codes para este endpoint:
+
+- `401` (`auth_required`, `auth_invalid_token`): token faltante o inválido.
+- `404` (`reservation_not_found`): la reserva no existe o pertenece a otro cliente.
+- `409` (`reservation_invalid_transition`): la reserva ya está cancelada.
+- `422` (`reservation_reason_required`, `reservation_reason_too_long`, `validation_error`): motivo vacío, demasiado largo o payload inválido.
+
 ## Error format
 
 Los errores de dominio y auth deben mantenerse en este formato:

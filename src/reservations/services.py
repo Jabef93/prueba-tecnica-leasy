@@ -8,8 +8,10 @@ from django.db import transaction
 
 from reservations.constants import (
     PERMISSION_HOLD_RESERVATION,
+    RESERVATION_CANCELLABLE_STATUSES,
     RESERVATION_HOLDABLE_STATUSES,
     RESERVATION_REASON_MAX_LENGTH,
+    RESERVATION_STATUS_CANCELLED,
     RESERVATION_STATUS_CONFIRMED,
     RESERVATION_STATUS_ON_HOLD,
     RESERVATION_STATUS_REQUESTED,
@@ -113,14 +115,45 @@ class ReservationLifecycleService:
         reservation.save(update_fields=["status", "hold_reason", "updated_at"])
         return reservation
 
-    def _get_for_update(self, *, reservation_id: UUID) -> Reservation:
+    @transaction.atomic
+    def cancel_reservation(
+        self,
+        *,
+        reservation_id: UUID,
+        customer_id: UUID,
+        reason: str,
+    ) -> Reservation:
+        """Cancel a reservation on behalf of its owner.
+
+        The lookup is scoped by ``customer_id`` so a reservation owned by someone
+        else is indistinguishable from a missing one (no existence leak).
+        """
+        cleaned_reason = normalize_reason(reason)
+        reservation = self._get_for_update(
+            reservation_id=reservation_id, customer_id=customer_id
+        )
+
+        if reservation.status not in RESERVATION_CANCELLABLE_STATUSES:
+            raise ReservationStatusTransitionError()
+
+        reservation.status = RESERVATION_STATUS_CANCELLED
+        reservation.cancel_reason = cleaned_reason
+        reservation.save(update_fields=["status", "cancel_reason", "updated_at"])
+        return reservation
+
+    def _get_for_update(
+        self, *, reservation_id: UUID, customer_id: UUID | None = None
+    ) -> Reservation:
         # of=("self",) locks only the reservation row; without it PostgreSQL
         # would also lock the joined customer/user/room rows.
+        filters = {"pk": reservation_id}
+        if customer_id is not None:
+            filters["customer_id"] = customer_id
         try:
             return (
                 Reservation.objects.select_for_update(of=("self",))
                 .select_related("customer__user", "room")
-                .get(pk=reservation_id)
+                .get(**filters)
             )
         except Reservation.DoesNotExist as exc:
             raise ReservationNotFoundError() from exc
