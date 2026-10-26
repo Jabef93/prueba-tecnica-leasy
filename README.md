@@ -8,6 +8,8 @@ Starter repo para evaluar criterio full stack con foco principal en Django.
 - Django templates para backoffice
 - Django Ninja para API cliente
 - Pydantic v2 para contratos y errores del API
+- React 18 + TypeScript + Vite para la mini app cliente (`client-app/`)
+- PostgreSQL 17 (en Docker) / SQLite (fallback local)
 - pytest + factory_boy
 
 ## Dominio
@@ -16,34 +18,34 @@ El dominio es ficticio y está basado en reservas:
 
 - `Customer`
 - `Room`
-- `Reservation`
+- `Reservation` (`requested`, `confirmed`, `on_hold`, `cancelled`)
 
-## Flujo de la prueba
+## Documentación del proyecto
 
-El assessment tiene dos partes:
+- Consigna: [ASSESSMENT.md](./ASSESSMENT.md)
+- Contrato del API: [API_CONTRACT.md](./API_CONTRACT.md)
+- Guía de Docker: [DOCKER.md](./DOCKER.md)
+- Decisiones técnicas: [DECISIONS.md](./DECISIONS.md)
+- Mini app cliente: [client-app/README.md](./client-app/README.md)
 
-1. Extender el backoffice Django con una transición nueva de reservas.
-2. Construir una mini app cliente en `client-app/` para consumir el API.
-3. Dockerizar la solución completa.
+## Correr todo con Docker (recomendado)
 
-La consigna completa está en [ASSESSMENT.md](./ASSESSMENT.md).
-El contrato base del API está en [API_CONTRACT.md](./API_CONTRACT.md).
+```bash
+docker compose up --build
+```
 
-## Docker
+Servicios expuestos:
 
-El starter **no incluye Dockerfile ni docker-compose** a propósito.
+- **Mini app cliente**: [http://localhost:5173](http://localhost:5173)
+- **Backoffice login**: [http://localhost:8000/accounts/login/](http://localhost:8000/accounts/login/)
+- **Backoffice reservas**: [http://localhost:8000/backoffice/reservations/](http://localhost:8000/backoffice/reservations/)
+- **API base**: [http://localhost:8000/api/v1/](http://localhost:8000/api/v1/)
 
-Eso forma parte de la prueba. El candidato debe:
+Consulta [DOCKER.md](./DOCKER.md) para variables de entorno, ejecución de tests en contenedor y limpieza de volúmenes.
 
-- dockerizar el backend Django
-- dockerizar la mini app cliente
-- agregar un `docker-compose.yml`
-- documentar cómo correr todo con Docker
+## Setup local (sin Docker)
 
-La expectativa es un Dockerfile orientado a producción y no una imagen mínima
-hecha solo para pasar localmente.
-
-## Setup
+Backend (usa SQLite automáticamente cuando `POSTGRES_HOST` no está definido):
 
 ```bash
 uv sync
@@ -52,13 +54,15 @@ uv run python src/manage.py seed_assessment_data
 uv run python src/manage.py runserver
 ```
 
-## URLs útiles
+Mini app cliente (en otra terminal):
 
-- Backoffice login: [http://127.0.0.1:8000/accounts/login/](http://127.0.0.1:8000/accounts/login/)
-- Backoffice reservas: [http://127.0.0.1:8000/backoffice/reservations/](http://127.0.0.1:8000/backoffice/reservations/)
-- API base: [http://127.0.0.1:8000/api/v1/](http://127.0.0.1:8000/api/v1/)
+```bash
+cd client-app
+npm install
+npm run dev
+```
 
-## Checks mínimos
+## Checks de calidad
 
 ```bash
 PYTHONPATH=src uv run pytest
@@ -67,12 +71,12 @@ uv run ruff check .
 
 ## Credenciales semilla
 
-Se crean con `seed_assessment_data`:
+Se crean automáticamente con `seed_assessment_data`:
 
-- Staff manager
+- Staff manager (incluye permiso `reservations.hold_reservation`)
   - username: `manager`
   - password: `demo1234`
-- Staff operator
+- Staff operator (puede ver y editar, pero **no** poner en espera)
   - username: `operator`
   - password: `demo1234`
 - Cliente Alice
