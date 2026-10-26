@@ -1,28 +1,32 @@
-# Mini app cliente
+# Mini app cliente (`client-app/`)
 
-Construye aquí una mini app con el framework frontend que prefieras.
+Aplicación React + TypeScript + Vite que consume el API de clientes (`/api/v1`) para:
 
-## Objetivo
+- Iniciar sesión (`POST /api/v1/auth/login` + `GET /api/v1/auth/me`).
+- Consultar "Mis reservas" (`GET /api/v1/reservations/`).
+- Cancelar una reserva propia con motivo obligatorio (`POST /api/v1/reservations/{id}/cancel`).
+- Mostrar errores estables del contrato ProblemDetail (`code`, `detail`).
 
-Consumir el API del proyecto para permitir que un cliente:
+## Ejecutar en local (sin Docker)
 
-- haga login
-- vea sus reservas
-- cancele una reserva con motivo
+Con el backend corriendo en `http://127.0.0.1:8000`:
 
-## Requerimientos
+```bash
+cd client-app
+npm install
+npm run dev
+```
 
-- Debe ser fácil de correr con uno o dos comandos.
-- Debe documentar cómo levantarla.
-- No hace falta routing complejo.
-- No se evalúa diseño visual sofisticado.
-- Sí se evalúa:
-  - consumo del API
-  - manejo de estado
-  - manejo de errores
-  - claridad del código
+La app quedará disponible en `http://localhost:5173`. Vite redirige automáticamente `/api/*` hacia `http://127.0.0.1:8000` (configurable mediante `VITE_API_PROXY_TARGET`), evitando problemas de CORS.
 
-## Sugerencia
+## Build de producción
 
-Mantén la app pequeña. Un login, una lista y un modal o formulario de
-cancelación son suficientes.
+```bash
+cd client-app
+npm run build
+```
+
+## Credenciales demo
+
+- `alice@example.com` / `demo1234`
+- `bob@example.com` / `demo1234`
