@@ -2,17 +2,35 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from django.contrib.auth.models import AbstractBaseUser
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 
 from reservations.constants import (
+    PERMISSION_HOLD_RESERVATION,
+    RESERVATION_HOLDABLE_STATUSES,
+    RESERVATION_REASON_MAX_LENGTH,
     RESERVATION_STATUS_CONFIRMED,
+    RESERVATION_STATUS_ON_HOLD,
     RESERVATION_STATUS_REQUESTED,
 )
 from reservations.exceptions import (
     ReservationNotFoundError,
+    ReservationReasonRequiredError,
+    ReservationReasonTooLongError,
     ReservationStatusTransitionError,
 )
 from reservations.models import Reservation
+
+
+def normalize_reason(reason: str | None) -> str:
+    """Strip and validate a free-text reason required by a lifecycle transition."""
+    cleaned = (reason or "").strip()
+    if not cleaned:
+        raise ReservationReasonRequiredError()
+    if len(cleaned) > RESERVATION_REASON_MAX_LENGTH:
+        raise ReservationReasonTooLongError()
+    return cleaned
 
 
 class ReservationQueryService:
@@ -62,14 +80,7 @@ class ReservationLifecycleService:
         actor_id: int | None = None,
     ) -> Reservation:
         _ = actor_id
-        try:
-            reservation = (
-                Reservation.objects.select_for_update()
-                .select_related("customer__user", "room")
-                .get(pk=reservation_id)
-            )
-        except Reservation.DoesNotExist as exc:
-            raise ReservationNotFoundError() from exc
+        reservation = self._get_for_update(reservation_id=reservation_id)
 
         if reservation.status != RESERVATION_STATUS_REQUESTED:
             raise ReservationStatusTransitionError()
@@ -77,3 +88,39 @@ class ReservationLifecycleService:
         reservation.status = RESERVATION_STATUS_CONFIRMED
         reservation.save(update_fields=["status", "updated_at"])
         return reservation
+
+    @transaction.atomic
+    def hold_reservation(
+        self,
+        *,
+        reservation_id: UUID,
+        reason: str,
+        actor: AbstractBaseUser,
+    ) -> Reservation:
+        # Defense in depth: the view already enforces the permission, but the
+        # business rule must hold for any caller of the service.
+        if not actor.has_perm(PERMISSION_HOLD_RESERVATION):
+            raise PermissionDenied
+
+        cleaned_reason = normalize_reason(reason)
+        reservation = self._get_for_update(reservation_id=reservation_id)
+
+        if reservation.status not in RESERVATION_HOLDABLE_STATUSES:
+            raise ReservationStatusTransitionError()
+
+        reservation.status = RESERVATION_STATUS_ON_HOLD
+        reservation.hold_reason = cleaned_reason
+        reservation.save(update_fields=["status", "hold_reason", "updated_at"])
+        return reservation
+
+    def _get_for_update(self, *, reservation_id: UUID) -> Reservation:
+        # of=("self",) locks only the reservation row; without it PostgreSQL
+        # would also lock the joined customer/user/room rows.
+        try:
+            return (
+                Reservation.objects.select_for_update(of=("self",))
+                .select_related("customer__user", "room")
+                .get(pk=reservation_id)
+            )
+        except Reservation.DoesNotExist as exc:
+            raise ReservationNotFoundError() from exc
