@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-assessment}
+      POSTGRES_USER: ${POSTGRES_USER:-assessment}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-assessment}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER:-assessment} -d $${POSTGRES_DB:-assessment}",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-docker-secret-key-change-me}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000,http://localhost:5173,http://127.0.0.1:5173}
+      API_JWT_SECRET: ${API_JWT_SECRET:-django-insecure-docker-jwt-secret-change-me}
+      API_JWT_ISSUER: ${API_JWT_ISSUER:-assessment-client-api}
+      API_JWT_AUDIENCE: ${API_JWT_AUDIENCE:-assessment-client-app}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-assessment}
+      POSTGRES_USER: ${POSTGRES_USER:-assessment}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-assessment}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+
+  client:
+    build:
+      context: ./client-app
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${CLIENT_PORT:-5173}:8080"
+
+volumes:
+  postgres_data:
