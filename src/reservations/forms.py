@@ -1,5 +1,6 @@
 from django import forms
 
+from reservations.constants import RESERVATION_REASON_MAX_LENGTH
 from reservations.models import Reservation
 
 
@@ -35,3 +36,18 @@ class ReservationUpdateForm(forms.ModelForm):
             )
 
         return cleaned_data
+
+
+class ReservationHoldForm(forms.Form):
+    hold_reason = forms.CharField(
+        label="Motivo de la espera",
+        max_length=RESERVATION_REASON_MAX_LENGTH,
+        strip=True,
+        widget=forms.Textarea(attrs={"rows": 3}),
+        error_messages={
+            "required": "El motivo es obligatorio.",
+            "max_length": (
+                f"El motivo no puede superar los {RESERVATION_REASON_MAX_LENGTH} caracteres."
+            ),
+        },
+    )

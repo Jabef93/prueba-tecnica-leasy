@@ -202,6 +202,11 @@
         .muted {
             color: var(--muted);
         }
+        .badge--confirmed { background: #dcebe3; color: #2d5a43; }
+        .badge--on_hold { background: #f6e7c8; color: #7a5512; }
+        .badge--cancelled { background: #f3dcd9; color: var(--danger); }
+        .message--error { background: #fbeeec; border-color: #ecc8c3; color: var(--danger); }
+        .field-error { color: var(--danger); font-size: 14px; }
         @media (max-width: 700px) {
             .grid-2 {
                 grid-template-columns: 1fr;
@@ -243,7 +248,7 @@
     {% if messages %}
         <div class="messages">
             {% for message in messages %}
-                <div class="message">{{ message }}</div>
+                <div class="message message--{{ message.tags }}">{{ message }}</div>
             {% endfor %}
         </div>
     {% endif %}

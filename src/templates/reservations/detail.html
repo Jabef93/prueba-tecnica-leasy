@@ -8,7 +8,6 @@
             <div class="topbar" style="margin-bottom:16px;">
                 <div>
                     <h2 style="margin:0;">Detalle de reserva</h2>
-                    <!-- Aquí el candidato agregará el flujo de ON_HOLD.-->
                 </div>
                 <div class="actions">
                     <a class="btn" href="{% url 'reservation_list' %}">Volver</a>
@@ -37,7 +36,7 @@
                 </div>
                 <div class="field">
                     <strong>Estado</strong>
-                    <span class="badge">{{ reservation.get_status_display }}</span>
+                    <span><span class="badge badge--{{ reservation.status }}">{{ reservation.get_status_display }}</span></span>
                 </div>
                 <div class="field">
                     <strong>Nota interna</strong>
@@ -47,16 +46,40 @@
                     <strong>Motivo de cancelación</strong>
                     <span>{{ reservation.cancel_reason|default:"-" }}</span>
                 </div>
+                <div class="field">
+                    <strong>Motivo de espera</strong>
+                    <span data-testid="hold-reason">{{ reservation.hold_reason|default:"-" }}</span>
+                </div>
             </div>
         </div>
 
-        {% if can_change and reservation.status == "requested" %}
-            <div class="card">
-                <h3 style="margin-top:0;">Acciones rápidas</h3>
-                <form method="post" action="{% url 'reservation_confirm' reservation.id %}">
-                    {% csrf_token %}
-                    <button class="btn btn-primary" type="submit">Confirmar reserva</button>
-                </form>
+        {% if can_confirm or can_hold %}
+            <div class="card stack">
+                <h3 style="margin:0;">Acciones rápidas</h3>
+
+                {% if can_confirm %}
+                    <form method="post" action="{% url 'reservation_confirm' reservation.id %}">
+                        {% csrf_token %}
+                        <button class="btn btn-primary" type="submit">Confirmar reserva</button>
+                    </form>
+                {% endif %}
+
+                {% if can_hold %}
+                    <form method="post" action="{% url 'reservation_hold' reservation.id %}" class="stack">
+                        {% csrf_token %}
+                        {{ hold_form.non_field_errors }}
+                        <div class="field">
+                            <label for="{{ hold_form.hold_reason.id_for_label }}"><strong>{{ hold_form.hold_reason.label }}</strong></label>
+                            {{ hold_form.hold_reason }}
+                            {% for error in hold_form.hold_reason.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                        <div>
+                            <button class="btn" type="submit">Poner en espera</button>
+                        </div>
+                    </form>
+                {% endif %}
             </div>
         {% endif %}
     </div>
