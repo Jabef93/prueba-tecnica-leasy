@@ -4,7 +4,7 @@ from uuid import UUID
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
+from django.db import connection, transaction
 
 from reservations.constants import (
     PERMISSION_HOLD_RESERVATION,
@@ -144,16 +144,15 @@ class ReservationLifecycleService:
     def _get_for_update(
         self, *, reservation_id: UUID, customer_id: UUID | None = None
     ) -> Reservation:
-        # of=("self",) locks only the reservation row; without it PostgreSQL
-        # would also lock the joined customer/user/room rows.
         filters = {"pk": reservation_id}
         if customer_id is not None:
             filters["customer_id"] = customer_id
         try:
-            return (
-                Reservation.objects.select_for_update(of=("self",))
-                .select_related("customer__user", "room")
-                .get(**filters)
-            )
+            qs = Reservation.objects.select_related("customer__user", "room")
+            if connection.features.has_select_for_update_of:
+                qs = qs.select_for_update(of=("self",))
+            elif connection.features.has_select_for_update:
+                qs = qs.select_for_update()
+            return qs.get(**filters)
         except Reservation.DoesNotExist as exc:
             raise ReservationNotFoundError() from exc

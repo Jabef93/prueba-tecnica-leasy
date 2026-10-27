@@ -10,4 +10,5 @@ dist/
 build/
 client-app/node_modules/
 client-app/dist/
+*.tsbuildinfo
 .env
