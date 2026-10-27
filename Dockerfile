@@ -58,8 +58,8 @@ USER app
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=5 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/accounts/login/', timeout=2)" || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD python -c "import http.client, sys; c = http.client.HTTPConnection('127.0.0.1', 8000, timeout=2); c.request('GET', '/healthz'); sys.exit(0 if c.getresponse().status == 200 else 1)"
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["gunicorn", "config.wsgi:application", "--chdir", "/app/src", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-"]

@@ -24,6 +24,12 @@ def test_reservation_list_requires_login(client):
     assert response.status_code == 302
 
 
+def test_healthz_returns_200_without_auth(client):
+    response = client.get("/healthz")
+    assert response.status_code == 200
+    assert response.content == b"ok"
+
+
 @pytest.mark.django_db
 def test_reservation_list_renders_for_user_with_permission(client):
     reservation = ReservationFactory()
